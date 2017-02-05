@@ -16,106 +16,220 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.io.WritableComparable;
+import org.apache.hadoop.io.Writable;
+// import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 
-// Writable Operation
+
+
+
 public class MinMaxMean{
+    // Writable Operation
+    public static class MMM_Writable implements Writable {
+      Integer field4_val;
+      Integer field4_min;
+      Integer field4_max;
+      Integer count_one;
+      Integer sum_val;
+      Integer mean_val;
 
-	public static class MMM_writable implements WritableComparable<MMM_writable>{
-        private int field4;
-        private String name;
-        
-        public void setzNameField(String name, int field4){
-            System.out.println("setzNameField method of writable class the name is     " + name);
-            this.name = name.toString();
-            this.field4 = field4;
+      // Construction and initalization with 0 which is overridden
+      public MMM_Writable() {
+          field4_val = 0;
+          field4_min = 0;
+          field4_max = 0;
+          count_one = 0;
+          sum_val = 0;
+          mean_val = 0;
         }
-        
-        public String getname(){
-            System.out.println("returning the string name");
-            return this.name;
-        }
-        
-        public int getfield(){
-            System.out.println("returning the int field4");
-            return this.field4;
-        }
-        
-        public void readFields(DataInput input) throws IOException{
-        	this.field4 = input.readInt();
-          	this.name = input.readUTF();
-          	System.out.println("readfields method of writable class and the name is   " + this.name);
-          	System.out.println("readfields method of writable class and the field4 is   " + this.field4);
-        }
-        
-        public void write(DataOutput output) throws IOException{
-        	output.writeInt(this.field4);
-        	output.writeUTF(this.name);
-        	System.out.println("write method of writable class and the name is    " + this.name);
-        	System.out.println("write method of writable class and the field4 is    " + this.field4);
-        }
-        
-        public int compareTo(MMM_writable a){
-        	System.out.println("Inside the compare_to method of MMM_writable");
-          	System.out.println("this.name is " + this.name + " and a.name is " + a.getname());
-          	int val = this.name.compareTo(a.getname());
-          	System.out.println("The val after comparision is " + val);
-          	if (val == 0){
-            	System.out.println("this.name is " + this.name + " and a.name is " + a.getname());
 
-            	if (a.getfield() < this.field4){
-              	System.out.println("this.field4 is " + this.field4 + " and a.field4 is " + a.getfield());
-              	return 1;
-            	}
+      // Implementing Setter Method --> Used for mapper to set the min and max value
 
-            	if (a.getfield() > this.field4){
-              	System.out.println("this.field4 is " + this.field4 + " and a.field4 is " + a.getfield());
-              	return -1;
-            	}
-            
-            	return 0;
-          	}
-          	return val;
-        }
-    }
+      public void setValue(Integer field4_val){
+          this.field4_val = field4_val;
+      }
+      
+      public void setMinvalue(Integer field4_min){
+          this.field4_min = field4_min;
+      }
+
+      public void setMaxvalue(Integer field4_max){
+          this.field4_max = field4_max;
+      }
+
+      public void setCount(Integer count_one){
+          this.count_one = count_one;
+      }
+
+      public void setSum(Integer sum_val){
+          this.sum_val = sum_val;
+      }
+
+      public void setMean(Integer mean_val){
+          this.mean_val = mean_val;
+      }
 
 
+      // Implementing Getter Method --> Used by combiner or reducer to get the min and max value
 
-	// Mapper Operation
-	public static class MMM_mapper extends Mapper<LongWritable, Text, MMM_writable, NullWritable>{
-  		NullWritable null_val = NullWritable.get();
-  		MMM_writable composite_val = new MMM_writable();
+      public Integer getValue(){
+          return field4_val;
+      }
+
+      public Integer getMinvalue(){
+          return field4_min;
+      }
+
+      public Integer getMaxvalue(){
+          return field4_max;
+      }
+
+      public Integer getCount(){
+          return count_one;
+      }
+
+      public Integer getSum(){
+          return sum_val;
+      }
+
+      // readFile method
+      public void readFields(DataInput input) throws IOException{
+          field4_val = new Integer(input.readInt());
+          field4_min = new Integer(input.readInt());
+          field4_max = new Integer(input.readInt());
+          count_one = new Integer(input.readInt());
+          sum_val = new Integer(input.readInt());
+      }
+
+      // writeFile method
+      public void write(DataOutput output) throws IOException{    // This method writes the latest output
+          output.writeInt(field4_val);
+          output.writeInt(field4_min);
+          output.writeInt(field4_max);
+          output.writeInt(count_one);
+          output.writeInt(sum_val);
+      }
+
+      // The class requires a return type that writes to the file output (Basically serializing and deswrializing the output throuht th enetwork):
+      public String toString() {
+          return field4_min + "\t" + field4_max + "\t" + mean_val;
+      } 
+  }
+
+
+	// Mapper Operation, the mapper function will simply set the Minvalue and Maxalue for each user repedly. Afer the map job will write the username and a MMM_Writable objet with a Minvalue and Maxvalue
+	public static class MMM_mapper extends Mapper<LongWritable, Text, Text, MMM_Writable>{
+      private Text name = new Text();
+      private Integer field4_val;
+      private Integer field4_min;
+      private Integer field4_max;
+      private Integer one = new Integer(1);
+
+  		MMM_Writable composite_val = new MMM_Writable();  // Cerating a object of class Writable so that the reducer can understand it of that type
   
   		public void map(LongWritable key, Text value, Context context)throws IOException, InterruptedException{
   			String[] tokens = value.toString().split(",");
-  			String name = tokens[0];
-  			int field4 = Integer.parseInt(tokens[3]);
-  			System.out.println("name is " + name + " and a.field4 is " + field4);
-  			this.composite_val.setzNameField(name, field4);
-  			context.write(this.composite_val, this.null_val);
+  			name.set(tokens[0]);
+
+        // Selecting the Token 3 for Min, Max and Mean operation in Combiner and Reducer
+        field4_val = Integer.parseInt(tokens[3]);
+
+  			// System.out.println("field4_min is " + name + " and a.field4 is " + field4);
+  			composite_val.setValue(field4_val);
+        composite_val.setCount(one);
+  			context.write(name, composite_val);
   		}
 	}
 
 	// Reducer Operation
-	public static class MMM_reducer extends Reducer<MMM_writable, NullWritable, Text, NullWritable>{
-  		
-  		public void reduce(MMM_writable key, Iterable<NullWritable> value, Context context) throws IOException, InterruptedException{
+  // In Reducer we perform the heavy lifting. Why? Because we are interested in finding the min, max and mean value of each user or given name. In reduces we know that every thing is sorted so for 1 user we get iterable values and then invoking compareTo would be much easy and comprehendible.
+	public static class MMM_combiner extends Reducer<Text, MMM_Writable, Text, MMM_Writable>{
+  		private MMM_Writable intermediateResult = new MMM_Writable();
 
-  			System.out.println("I am inside the reducer aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-  			String a = key.getname();
-  			int b = key.getfield();
+  		public void reduce(Text key, Iterable<MMM_Writable> values, Context context) throws IOException, InterruptedException{
+          // Integer minValue = 0;
+          // Integer maxValue = 0;
+          Integer field4value = 0;
+          Integer keepCount = 0;
+          Integer keepSum = 0;
 
-  			System.out.println("the name is " + a);
-  			System.out.println("the field4 is " + b);
-  			String fin_key = a + " " + b;
-  			System.out.println(a);
-  			System.out.println(b);
-  			context.write(new Text(fin_key), null);
+  			  System.out.println("I am inside the combiner aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+  			  
+          // The Writable object intermediateResult would give a value of min =0  anf max =0 as these are the value stored in the default constructer. So it is a good idea to set them to null to avoid min_value of 0 for every time.
+          intermediateResult.setMinvalue(null);  
+          intermediateResult.setMaxvalue(null);
+          intermediateResult.setCount(0);
+          intermediateResult.setSum(0);
+
+          for (MMM_Writable val: values){
+              field4value = val.getValue();
+
+              // val.getCount() gives the count for the current iteraing user 
+              keepCount += val.getCount();   
+              keepSum += field4value;
+              
+              // compareTo outputs 0 if the values compared are same, output 1 if the first value is larger than the second and outputs -1 if the first value is smaller than second value
+              if (intermediateResult.getMinvalue()==null || field4value.compareTo(intermediateResult.getMinvalue())<0){   
+                  intermediateResult.setMinvalue(field4value);  // set the current iterable value as minValue if it is smaller that the previously min set value for the user
+              }
+
+              if (intermediateResult.getMaxvalue()==null || field4value.compareTo(intermediateResult.getMaxvalue())>0){   
+                  intermediateResult.setMaxvalue(field4value);  // set the current iterable value as maxValue if it is larger that the previous set max value for the user
+              }
+          }
+
+        intermediateResult.setCount(keepCount);
+        intermediateResult.setSum(keepSum);  
+  			context.write(key, intermediateResult);  // Provides the output for one user
   		}
 	}
+
+
+
+
+  public static class MMM_reducer extends Reducer<Text, MMM_Writable, Text, MMM_Writable>{
+      private MMM_Writable finalResult = new MMM_Writable();
+
+      public void reduce(Text key, Iterable<MMM_Writable> values, Context context) throws IOException, InterruptedException{
+          Integer minValue = 0;
+          Integer maxValue = 0;
+          Integer keepCount = 0;
+          Integer keepSum = 0;
+          Integer keepMean = 0;
+
+          System.out.println("I am inside the reducer aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+          
+          // The Writable object finalResult would give a value of min =0  anf max =0 as these are the value stored in the default constructer. So it is a good idea to set them to null to avoid min_value of 0 for every time.
+          finalResult.setMinvalue(null);  
+          finalResult.setMaxvalue(null);
+
+          for (MMM_Writable val: values){
+              minValue = val.getMinvalue();
+              maxValue = val.getMaxvalue();
+            
+              // val.getCount() gives the count for the current iteraing user 
+              // finalResult.getCount() gives the count for the last stored count vaue for the same user.
+              keepCount += val.getCount();   
+              keepSum += val.getSum();
+              
+
+              // compareTo outputs 0 if the values compared are same, output 1 if the first value is larger than the second and outputs -1 if the first value is smaller than second value
+              if (finalResult.getMinvalue()==null || minValue.compareTo(finalResult.getMinvalue())<0){   
+                  finalResult.setMinvalue(minValue);  // set the current iterable value as minValue if it is smaller that the previously min set value for the user
+              }
+
+              if (finalResult.getMaxvalue()==null || maxValue.compareTo(finalResult.getMaxvalue())>0){   
+                  finalResult.setMaxvalue(maxValue);  // set the current iterable value as maxValue if it is larger that the previous set max value for the user
+              }
+          }
+        keepMean =  keepSum/keepCount;
+        finalResult.setMean(keepMean);  
+        context.write(key, finalResult);  // Provides the output for one user
+      }
+  }
+
 
 
 
@@ -127,13 +241,13 @@ public class MinMaxMean{
     	job_run.setJarByClass(MinMaxMean.class);
 
     	job_run.setMapperClass(MMM_mapper.class);
-    	// job_run.setPartitionerClass(MMM_partitionar.class);
+      job_run.setCombinerClass(MMM_combiner.class);
     	job_run.setReducerClass(MMM_reducer.class);
     
-    	job_run.setMapOutputKeyClass(MMM_writable.class);
-    	job_run.setMapOutputValueClass(NullWritable.class);
+    	// job_run.setMapOutputKeyClass(Text.class);
+    	// job_run.setMapOutputValueClass(MMM_Writable.class);
     	job_run.setOutputKeyClass(Text.class);
-    	job_run.setOutputValueClass(NullWritable.class);
+    	job_run.setOutputValueClass(MMM_Writable.class);
     
     	FileInputFormat.addInputPath(job_run, new Path(args[0]));
     	FileOutputFormat.setOutputPath(job_run, new Path(args[1]));
