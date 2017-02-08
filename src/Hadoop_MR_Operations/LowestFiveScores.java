@@ -30,7 +30,7 @@ public class LowestFiveScores{
         private Integer field4_val;
         private TreeMap<Integer, Text> recordHolder = new TreeMap<Integer, Text>();
     
-    		public void map(LongWritable key, Text value, Context context)throws IOException, InterruptedException{
+    		public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException{
       			String[] tokens = value.toString().split(",");
       			name.set(tokens[0]);
 
