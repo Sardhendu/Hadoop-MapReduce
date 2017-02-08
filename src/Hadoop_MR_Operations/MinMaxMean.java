@@ -1,6 +1,4 @@
 // package Hadoop_MR_Operations;
-
-
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
@@ -34,6 +32,7 @@ public class MinMaxMean{
       Integer count_one;
       Integer sum_val;
       Integer mean_val;
+      String per_name;
 
       // Construction and initalization with 0 which is overridden
       public MMM_Writable() {
@@ -43,9 +42,14 @@ public class MinMaxMean{
           count_one = 0;
           sum_val = 0;
           mean_val = 0;
+          per_name = null;
         }
 
       // Implementing Setter Method --> Used for mapper to set the min and max value
+
+      public void setName(String per_name){
+          this.per_name = per_name;
+      }
 
       public void setValue(Integer field4_val){
           this.field4_val = field4_val;
@@ -100,7 +104,7 @@ public class MinMaxMean{
           field4_min = new Integer(input.readInt());
           field4_max = new Integer(input.readInt());
           count_one = new Integer(input.readInt());
-          sum_val = new Integer(input.readInt());
+          sum_val = new Integer(input.readInt()); 
       }
 
       // writeFile method
@@ -114,7 +118,7 @@ public class MinMaxMean{
 
       // The class requires a return type that writes to the file output (Basically serializing and deswrializing the output throuht th enetwork):
       public String toString() {
-          return field4_min + "\t" + field4_max + "\t" + mean_val;
+          return per_name + "," +field4_min + "," + field4_max + "," + mean_val;
       } 
   }
 
@@ -154,8 +158,6 @@ public class MinMaxMean{
           Integer field4value = 0;
           Integer keepCount = 0;
           Integer keepSum = 0;
-
-  			  System.out.println("I am inside the combiner aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
   			  
           // The Writable object intermediateResult would give a value of min =0  anf max =0 as these are the value stored in the default constructer. So it is a good idea to set them to null to avoid min_value of 0 for every time.
           intermediateResult.setMinvalue(null);  
@@ -189,7 +191,7 @@ public class MinMaxMean{
 
 
 
-  public static class MMM_reducer extends Reducer<Text, MMM_Writable, Text, MMM_Writable>{
+  public static class MMM_reducer extends Reducer<Text, MMM_Writable, NullWritable, MMM_Writable>{
       private MMM_Writable finalResult = new MMM_Writable();
 
       public void reduce(Text key, Iterable<MMM_Writable> values, Context context) throws IOException, InterruptedException{
@@ -202,6 +204,7 @@ public class MinMaxMean{
           System.out.println("I am inside the reducer aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
           
           // The Writable object finalResult would give a value of min =0  anf max =0 as these are the value stored in the default constructer. So it is a good idea to set them to null to avoid min_value of 0 for every time.
+          finalResult.setName(key.toString());
           finalResult.setMinvalue(null);  
           finalResult.setMaxvalue(null);
 
@@ -225,8 +228,9 @@ public class MinMaxMean{
               }
           }
         keepMean =  keepSum/keepCount;
-        finalResult.setMean(keepMean);  
-        context.write(key, finalResult);  // Provides the output for one user
+        finalResult.setMean(keepMean); 
+
+        context.write(NullWritable.get(), finalResult);  // Provides the output for one user
       }
   }
 
@@ -244,9 +248,9 @@ public class MinMaxMean{
       job_run.setCombinerClass(MMM_combiner.class);
     	job_run.setReducerClass(MMM_reducer.class);
     
-    	// job_run.setMapOutputKeyClass(Text.class);
-    	// job_run.setMapOutputValueClass(MMM_Writable.class);
-    	job_run.setOutputKeyClass(Text.class);
+    	job_run.setMapOutputKeyClass(Text.class);
+    	job_run.setMapOutputValueClass(MMM_Writable.class);
+    	job_run.setOutputKeyClass(NullWritable.class);
     	job_run.setOutputValueClass(MMM_Writable.class);
     
     	FileInputFormat.addInputPath(job_run, new Path(args[0]));
