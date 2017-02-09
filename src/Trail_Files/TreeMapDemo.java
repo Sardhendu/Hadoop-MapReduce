@@ -38,7 +38,7 @@ public class TreeMapDemo {
 	          System.out.println(tm.firstKey());
 	              tm.remove(tm.lastKey());
 	        }
-	      tm.put(new Double(-22.08), "ladir");
+	      tm.put(new Double(-222.08), "ladir");
 	      if (tm.size() > 5) {
 	          System.out.println(tm.firstKey());
 	              tm.remove(tm.lastKey());
