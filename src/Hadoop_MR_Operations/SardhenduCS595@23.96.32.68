@@ -118,7 +118,7 @@ public class MinMaxMean{
 
       // The class requires a return type that writes to the file output (Basically serializing and deswrializing the output throuht th enetwork):
       public String toString() {
-          return per_name + ", " +field4_min + ", " + field4_max + "," + mean_val;
+          return per_name + "," +field4_min + "," + field4_max + "," + mean_val;
       } 
   }
 

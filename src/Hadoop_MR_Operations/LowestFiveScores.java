@@ -88,7 +88,7 @@ public class LowestFiveScores{
                 Iterator<String> entryVal = entryKeyVal.getValue().iterator();
                  while(entryVal.hasNext() && keepIndex<5){
                     StringBuilder fnlString = new StringBuilder();
-                    fnlString.append(entryVal.next()).append(",").append(entryKeyVal.getKey());
+                    fnlString.append(entryVal.next()).append(", ").append(entryKeyVal.getKey());
                     context.write(new Text (fnlString.toString()), NullWritable.get());
                     keepIndex += 1;
                 }

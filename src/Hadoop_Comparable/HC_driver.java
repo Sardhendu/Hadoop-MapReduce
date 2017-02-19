@@ -1,4 +1,4 @@
-package com.hadoop_comparable;
+package Hadoop_Comparable;
 
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
